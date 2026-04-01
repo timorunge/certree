@@ -1,0 +1,8 @@
+# Build output
+/certree
+/dist/
+
+# Test and profiling artifacts
+*.test
+*.out
+*.prof

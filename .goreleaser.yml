@@ -1,0 +1,140 @@
+version: 2
+
+project_name: certree
+
+builds:
+  - id: certree
+    main: ./cmd/certree
+    binary: certree
+
+    flags:
+      - -trimpath
+
+    tags:
+      - osusergo
+      - netgo
+
+    # Version injection using ldflags
+    ldflags:
+      - -s -w
+      - -buildid=
+      - -X main.version=v{{.Version}}
+
+    env:
+      - CGO_ENABLED=0
+
+    # Build for multiple platforms
+    goos:
+      - linux
+      - darwin
+      - windows
+
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: certree
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+
+    format_overrides:
+      - goos: windows
+        formats: ["zip"]
+
+    files:
+      - README.md
+      - LICENSE*
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+signs:
+  - cmd: cosign
+    certificate: "${artifact}.pem"
+    args:
+      - sign-blob
+      - "--output-certificate=${certificate}"
+      - "--output-signature=${signature}"
+      - "${artifact}"
+      - "--yes"
+    artifacts: checksum
+    output: true
+
+sboms:
+  - artifacts: archive
+    cmd: syft
+    args: ["${artifact}", "--output", "spdx-json=${document}"]
+    documents:
+      - "${artifact}.sbom.json"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+  groups:
+    - title: Features
+      regexp: '^feat(\(.+\))?:'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^fix(\(.+\))?:'
+      order: 1
+    - title: Performance Improvements
+      regexp: '^perf(\(.+\))?:'
+      order: 2
+    - title: Refactoring
+      regexp: '^refactor(\(.+\))?:'
+      order: 3
+    - title: Others
+      order: 999
+
+release:
+  github:
+    owner: timorunge
+    name: certree
+
+  draft: false
+  prerelease: auto
+
+  name_template: "{{.ProjectName}} v{{.Version}}"
+
+  header: |
+    ## certree {{.Version}}
+
+    Release date: {{.Date}}
+
+  footer: |
+    ## Installation
+
+    ### Go Install
+    ```bash
+    go install github.com/timorunge/certree/cmd/certree@{{.Tag}}
+    ```
+
+    ### Binary Download
+    Download the appropriate binary for your platform from the assets below.
+
+    ## Verification
+
+    All binaries are checksummed and signed. Verify downloads using:
+    ```bash
+    sha256sum -c checksums.txt
+    cosign verify-blob --certificate checksums.txt.pem --signature checksums.txt.sig checksums.txt
+    ```
+
+    Each archive includes an SPDX SBOM (`.sbom.json`).
