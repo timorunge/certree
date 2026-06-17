@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"net"
 	"net/url"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -441,8 +442,8 @@ func GenerateChainWithDepth(depth int) ([]*x509.Certificate, []*rsa.PrivateKey, 
 	certs = append(certs, endEntityCert)
 	keys = append(keys, endEntityKey)
 
-	for i := len(intermediates) - 1; i >= 0; i-- {
-		certs = append(certs, intermediates[i])
+	for i, cert := range slices.Backward(intermediates) {
+		certs = append(certs, cert)
 		keys = append(keys, intermediateKeys[i])
 	}
 
