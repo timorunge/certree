@@ -248,13 +248,12 @@ func (rc *defaultRevocationChecker) CheckRevocation(ctx context.Context, cert *C
 	rc.logger.Warn("both OCSP and CRL checks failed", "cert", cert.CommonName(), "ocsp_error", err, "crl_error", crlErr)
 
 	combinedErr := fmt.Errorf("OCSP failed: %w; CRL failed: %w", err, crlErr)
-	return RevocationStatus{
-			Error: combinedErr,
-		}, NewStructuredError(
-			"revocation check failed for certificate",
-			ErrRevocationCheckFailed,
-			combinedErr,
-		)
+	structErr := NewStructuredError(
+		"revocation check failed for certificate",
+		ErrRevocationCheckFailed,
+		combinedErr,
+	)
+	return RevocationStatus{Error: combinedErr}, structErr
 }
 
 // tryRevocationURLs iterates over a list of URLs, calling checkFn for each one,
